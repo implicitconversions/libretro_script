@@ -3,7 +3,7 @@ CC=gcc
 CXX=g++
 INCLUDES=-Iinclude -Ideps -Ideps/lua-5.4.3
 
-CFLAGS=$(INCLUDES) $(DEFINES) -Wall -Werror -fPIC
+CFLAGS=$(INCLUDES) $(DEFINES) -Wall -fPIC
 CXXFLAGS=$(CFLAGS) -std=c++11
 LDFLAGS=-shared -lm
 

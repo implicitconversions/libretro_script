@@ -83,7 +83,7 @@ FORCEINLINE void retro_script_split_path_file(char** p, char** f, const char *pf
     while ((next = strpbrk(slash + 1, "\\/"))) slash = next;
     if (pf != slash) slash++;
     *f = retro_script_strdup(slash);
-    *p = strndup(pf, slash - pf);
+    *p = retro_script_strndup(pf, slash - pf);
 }
 
 struct lua_State;
