@@ -1,21 +1,9 @@
 #pragma once
 
 #include "libretro_script.h"
+#include "script.h"
 
-#include <lua_5.4.3.h>
-
-typedef struct script_state
-{
-    lua_State* L;
-    retro_script_id_t id;
-    struct script_state* next;
-    
-    // lua references
-    struct {
-        int on_run_begin;
-        int on_run_end;
-    } refs;
-} script_state_t;
+// TODO: rename symbols to retro_script_script_*
 
 // allocates a new script, but does not initialize it.
 // returns NULL only if not enough memory to allocate.
@@ -27,7 +15,7 @@ script_state_t* script_find(retro_script_id_t);
 
 // retrieves the script with the given Lua state
 // returns NULL if no such script.
-script_state_t* script_find_lua(lua_State* L);
+script_state_t* script_find_lua(struct lua_State* L);
 
 // allows iterating over all scripts
 // returns NULL if no scripts.

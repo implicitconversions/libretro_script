@@ -53,7 +53,7 @@ void* retro_script_hashmap_add(struct retro_script_hashmap* map, size_t index)
     new_entry->next = *entry ? (*entry)->next : NULL;
     *entry = new_entry;
     
-    return ((void*)new_entry) + sizeof(hashmap_entry_header);
+    return ((char*)new_entry) + sizeof(hashmap_entry_header);
 }
 
 void* retro_script_hashmap_get(struct retro_script_hashmap const* map, size_t index)
@@ -63,7 +63,7 @@ void* retro_script_hashmap_get(struct retro_script_hashmap const* map, size_t in
     {
         if (entry->index == index)
         {
-            return ((void*)entry) + sizeof(*entry);
+            return ((char*)entry) + sizeof(*entry);
         }
         if (entry->index > index)
         {

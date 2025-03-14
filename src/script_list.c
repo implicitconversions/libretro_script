@@ -1,7 +1,8 @@
+#include "l.h"
 #include "script_list.h"
 #include "util.h"
+#include "lram.h"
 
-#include <lua_5.4.3.h>
 #include <stdio.h>
 
 static script_state_t* script_states = NULL;
@@ -101,19 +102,20 @@ bool script_free(retro_script_id_t id)
         script_state = &(*script_state)->next;
     }
     
-    if (*script_state && (*script_state)->id != id) // note: checking the id again is paranoia.
+    if (*script_state && (*script_state)->id == id) // note: checking the id again is paranoia.
     {
-        script_state_t* tmp = *script_state;
-        *script_state = tmp->next;
+        script_state_t* script = *script_state;
+        *script_state = script->next;
         
         // clear cached script if it matches tmp.
-        if (tmp == script_find_cache)
+        if (script == script_find_cache)
         {
             script_find_cache = NULL;
         }
         
-        lua_close(tmp->L);
-        free(tmp);
+        retro_script_free_lram(script);
+        lua_close(script->L);
+        free(script);
         
         return false;
     }

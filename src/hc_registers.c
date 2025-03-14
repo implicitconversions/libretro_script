@@ -10,6 +10,7 @@ const char* retro_script_hc_get_cpu_name(unsigned type)
     CASE(Z80);
     CASE(6502);
     CASE(65816);
+    CASE(R3000A);
     default: return NULL;
     }
     #undef CASE
@@ -23,6 +24,7 @@ int retro_script_hc_get_cpu_register_count(unsigned type)
     CASE(Z80);
     CASE(6502);
     CASE(65816);
+    CASE(R3000A);
     default: return -1;
     }
     #undef CASE
@@ -72,6 +74,42 @@ const char* retro_script_hc_get_cpu_register_name(unsigned cpu_type, unsigned re
         CASE(65816, DB);
         CASE(65816, D);
         CASE(65816, PB);
+
+        CASE(R3000A, R0);
+        CASE(R3000A, AT);
+        CASE(R3000A, V0);
+        CASE(R3000A, V1);
+        CASE(R3000A, A0);
+        CASE(R3000A, A1);
+        CASE(R3000A, A2);
+        CASE(R3000A, A3);
+        CASE(R3000A, T0);
+        CASE(R3000A, T1);
+        CASE(R3000A, T2);
+        CASE(R3000A, T3);
+        CASE(R3000A, T4);
+        CASE(R3000A, T5);
+        CASE(R3000A, T6);
+        CASE(R3000A, T7);
+        CASE(R3000A, S0);
+        CASE(R3000A, S1);
+        CASE(R3000A, S2);
+        CASE(R3000A, S3);
+        CASE(R3000A, S4);
+        CASE(R3000A, S5);
+        CASE(R3000A, S6);
+        CASE(R3000A, S7);
+        CASE(R3000A, T8);
+        CASE(R3000A, T9);
+        CASE(R3000A, K0);
+        CASE(R3000A, K1);
+        CASE(R3000A, GP);
+        CASE(R3000A, SP);
+        CASE(R3000A, FP);
+        CASE(R3000A, RA);
+        CASE(R3000A, LO);
+        CASE(R3000A, HI);
+        CASE(R3000A, PC);
         default: return NULL;
     }
     #undef COMBINE

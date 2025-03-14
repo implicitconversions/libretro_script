@@ -1,6 +1,12 @@
 #include "memmap.h"
 #include "util.h"
 
+#if IC_COMPILER_MSC
+#define __BYTE_ORDER__ 4321
+#define __ORDER_BIG_ENDIAN__ 4321
+#define __ORDER_LITTLE_ENDIAN__ 1234
+#endif
+
 static char** addrspaces;
 static struct retro_memory_map memmap;
 
@@ -104,7 +110,7 @@ static char* get_address_from_descriptor_and_offset(struct retro_memory_descript
         return NULL;
     }
     
-    return descriptor->ptr + descriptor->offset + offset;
+    return ((char*)descriptor->ptr) + descriptor->offset + offset;
 }
 
 char* retro_script_memory_access(size_t emulated_address)
@@ -144,7 +150,9 @@ static FORCEINLINE char* readmem_chunk(size_t emulated_address, size_t count, bo
         // otherwise, copy to buffer and return the buffer.
         for (; offset < descriptor->len; ++offset, ++i)
         {
-            readbuff[flip ? (count - i - 1) : i] = *get_address_from_descriptor_and_offset(descriptor, offset);
+            size_t index = flip ? (count - i - 1) : i;
+            if (index < sizeof(readbuff))
+                readbuff[index] = *get_address_from_descriptor_and_offset(descriptor, offset);
         }
     }
     

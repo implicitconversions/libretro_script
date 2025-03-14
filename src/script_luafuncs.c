@@ -1,8 +1,10 @@
+#include "l.h"
 #include "script_luafuncs.h"
 #include "memmap.h"
 #include "core.h"
-
-#include <lua_5.4.3.h>
+#include "script.h"
+#include "script_list.h"
+#include "lram.h"
 
 int retro_script_luafunc_input_poll(lua_State* L)
 {
@@ -41,17 +43,138 @@ int retro_script_luafunc_input_state(lua_State* L)
     }
 }
 
+static int _lua_error(lua_State* L, const char* message)
+{
+    return luaL_error(L, "%s", message);
+}
+
+static int luafunc_lram_peek(lua_State* L)
+{
+    // validate arguments
+    if (lua_gettop(L) != 2) return _lua_error(L, "invalid number of arguments to \"lram:peek\"");
+    if (!lua_istable(L, 1)) return _lua_error(L, "lram table expected as first argument for \"lram:peek\"");
+    if (lua_rawgetfield(L, 1, "index") != LUA_TNUMBER) return _lua_error(L, "lram table missing 'index' field (\"lram:peek\")");
+    int index = lua_tointeger(L, -1);
+    if (!lua_istable(L, 1)) return _lua_error(L, "lram table expected as first argument for \"lram:peek\"");
+    if (!lua_isinteger(L, 2)) return _lua_error(L, "invalid address value for \"lram:peek\""); // index
+    int address = lua_tointeger(L, 2);
+    
+    script_state_t* script = script_find_lua(L);
+    if (!script) return _lua_error(L, "invalid lua context");
+    
+    void* lram_data = retro_script_get_lram_data(script, index);
+    size_t lram_size = retro_script_get_lram_size(script, index);
+    if (lram_data == NULL) return _lua_error(L, "no associated lram data found (\"lram:peek\")");
+    if (address < 0 || (size_t)address >= lram_size)
+        return _lua_error(L, "address out of bounds (\"lram:peek\")");
+    
+    // retrieve value
+    lua_pushinteger(L, ((unsigned char*)lram_data)[address]);
+    return 1;
+}
+
+static int luafunc_lram_size(lua_State* L)
+{
+    // validate arguments
+    if (lua_gettop(L) != 1) return _lua_error(L, "invalid number of arguments to \"lram:__len\"");
+    if (!lua_istable(L, 1)) return _lua_error(L, "lram table expected as first argument for \"lram:poke\"");
+    if (lua_rawgetfield(L, 1, "index") != LUA_TNUMBER) return _lua_error(L, "lram table missing 'index' field (\"lram:poke\")");
+    int index = lua_tointeger(L, -1);
+    
+    script_state_t* script = script_find_lua(L);
+    if (!script) return _lua_error(L, "invalid lua context");
+    size_t lram_size = retro_script_get_lram_size(script, index);
+    lua_pushinteger(L, lram_size);
+    return 1;
+}
+
+static int luafunc_lram_poke(lua_State* L)
+{
+    // validate arguments
+    if (lua_gettop(L) != 3) return _lua_error(L, "invalid number of arguments to \"lram:poke\"");
+    if (!lua_istable(L, 1)) return _lua_error(L, "lram table expected as first argument for \"lram:poke\"");
+    if (lua_rawgetfield(L, 1, "index") != LUA_TNUMBER) return _lua_error(L, "lram table missing 'index' field (\"lram:poke\")");
+    int index = lua_tointeger(L, -1);
+    if (!lua_istable(L, 1)) return _lua_error(L, "lram table expected as first argument for \"lram:poke\"");
+    if (!lua_isinteger(L, 2)) return _lua_error(L, "invalid address for \"lram:poke\"");
+    int address = lua_tointeger(L, 2);
+    
+    if (!lua_isinteger(L, 3)) return _lua_error(L, "invalid value for \"lram:poke\"");
+    int value = lua_tointeger(L, 3);
+    
+    script_state_t* script = script_find_lua(L);
+    if (!script) return _lua_error(L, "invalid lua context");
+    
+    void* lram_data = retro_script_get_lram_data(script, index);
+    size_t lram_size = retro_script_get_lram_size(script, index);
+    if (lram_data == NULL) return _lua_error(L, "no associated lram data found (\"lram:poke\")");
+
+    if (address < 0 || (size_t)address >= lram_size)
+        return _lua_error(L, "address out of bounds (\"lram:poke\")");
+    
+    // set value
+    ((unsigned char*)lram_data)[address] = (unsigned char)value;
+    return 0;
+}
+
+// could be renamed to "lram_new" if we added a metatable
+int retro_script_luafunc_reserve_lram(lua_State* L)
+{
+    // validate args
+    if (lua_gettop(L) != 1) return _lua_error(L, "invalid number of arguments to reserve_lram");
+    if (!lua_isinteger(L, 1)) return _lua_error(L, "invalid argument \"size\" for reserve_lram");
+    
+    int size = lua_tointeger(L, 1);
+    if (size <= 0) return _lua_error(L, "invalid argument \"size\" for reserve_lram");
+    
+    if (!core.retro_serialize) return 0;
+    
+    script_state_t* script = script_find_lua(L);
+    if (!script) return _lua_error(L, "invalid lua context");
+    
+    int index = retro_script_create_lram(script, size);
+    if (index < 0) return _lua_error(L, "failed to create lram");
+    
+    // create lram table
+    {
+        lua_newtable(L);
+        
+        // note: we could accelerate further with a direct pointer to lua_ram_t*
+        lua_pushinteger(L, index);
+        lua_rawsetfield(L, -2, "index");
+        
+        lua_pushcfunction(L, luafunc_lram_peek);
+        lua_rawsetfield(L, -2, "peek");
+        
+        lua_pushcfunction(L, luafunc_lram_poke);
+        lua_rawsetfield(L, -2, "poke");
+        
+        lua_pushcfunction(L, luafunc_lram_size);
+        lua_rawsetfield(L, -2, "size");
+    }
+    
+    return 1;
+}
+
+// adds the macro twice, one with the full name and again with the RETRO_ prefix cropped.
+static void registerIntMacro(struct lua_State* L, int value, const char* name) {
+    const char prefix[] = "RETRO_";
+    const size_t prefixLen = sizeof(prefix) - 1;
+
+    lua_pushinteger(L, value);
+    lua_rawsetfield(L, -2, name);
+
+    if (strncmp(name, prefix, prefixLen) == 0)
+    {
+      lua_pushinteger(L, value);
+      lua_rawsetfield(L, -2, name + prefixLen);
+    }
+};
+
 void retro_script_luafield_constants(struct lua_State* L)
 {
-    // adds the macro twice, once with the RETRO_ prefix cropped.
-    #define REGISTER_INT_MACRO(macro) \
-        lua_pushinteger(L, macro); \
-        lua_setfield(L, -2, #macro); \
-        if (strncmp(#macro, "RETRO_", strlen("RETRO_")) == 0) { \
-            lua_pushinteger(L, macro); \
-            lua_setfield(L, -2, #macro + strlen("RETRO_")); \
-        }
-    
+#define REGISTER_INT_MACRO(macro) registerIntMacro(L, macro, #macro)
+
     REGISTER_INT_MACRO(RETRO_DEVICE_NONE);
     REGISTER_INT_MACRO(RETRO_DEVICE_JOYPAD);
     REGISTER_INT_MACRO(RETRO_DEVICE_MOUSE);
@@ -118,6 +241,8 @@ void retro_script_luafield_constants(struct lua_State* L)
     
     REGISTER_INT_MACRO(RETRO_REGION_NTSC);
     REGISTER_INT_MACRO(RETRO_REGION_PAL);
+
+#undef REGISTER_INT_MACRO
 }
 
 int retro_script_luafunc_memory_read_char(lua_State* L)

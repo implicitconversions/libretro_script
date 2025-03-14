@@ -3,8 +3,6 @@
 #ifdef RETRO_SCRIPT_DEBUG
 #include "util.h"
 
-#include <lua_5.4.3.h>
-
 typedef void (*retro_script_debug_func_t)();
 
 #ifdef __GNUC__
@@ -32,7 +30,7 @@ static void lua_inspect(struct lua_State* L, int i, int verbose, int indent)
     switch (lua_type(L, i))
     {
     case LUA_TNUMBER:
-        STACKPRINT("%f", lua_tonumber(L, i));
+        //STACKPRINT("%f", lua_tonumber(L, i));
         break;
     case LUA_TSTRING:
         STACKPRINT("\"%s\"", lua_tostring(L, i));
